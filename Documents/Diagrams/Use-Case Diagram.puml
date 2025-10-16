@@ -1,0 +1,25 @@
+@startuml UseCase
+left to right direction
+skinparam packageStyle rectangle
+actor "Пользователь" as User
+actor "Администратор" as Admin
+
+User <|-- Admin
+
+usecase "Вход/регистрация" as UC1
+usecase "Пройти викторину" as UC2
+usecase "Посмотреть текущий результат" as UC3
+usecase "Посмотреть историю результатов" as UC4
+usecase "Добавить вопрос" as UC5
+usecase "Изменить вопрос" as UC6
+usecase "Удалить вопрос" as UC7
+
+User --> UC1
+User --> UC2
+User --> UC3
+User --> UC4
+
+Admin --> UC5
+Admin --> UC6
+Admin --> UC7
+@enduml
