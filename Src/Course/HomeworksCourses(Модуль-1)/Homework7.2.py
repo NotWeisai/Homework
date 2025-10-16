@@ -1,0 +1,6 @@
+print('Введите числа:')
+List = input()
+list1 = List.split()
+L = list(map(int, list1))
+Res = list(filter(lambda x: x % 13 == 0 or x % 19 == 0, L))
+print('Ответ: ', Res)
