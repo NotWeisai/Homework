@@ -1,0 +1,54 @@
+@startuml Er-diagram
+hide circle
+skinparam linetype ortho
+
+entity "users" as users {
+  * id : INTEGER <<PK>>
+  --
+  username : TEXT <<UNIQUE>>
+  created_at : TEXT
+}
+
+entity "questions" as questions {
+  * id : INTEGER <<PK>>
+  --
+  text : TEXT
+  category : TEXT
+  created_at : TEXT
+}
+
+entity "answers" as answers {
+  * id : INTEGER <<PK>>
+  --
+  question_id : INTEGER <<FK>>
+  text : TEXT
+  is_correct : INTEGER (0/1)
+}
+
+entity "results" as results {
+  * id : INTEGER <<PK>>
+  --
+  user_id : INTEGER <<FK>>
+  score : INTEGER
+  played_at : TEXT
+}
+
+entity "tags" as tags {
+  * id : INTEGER <<PK>>
+  --
+  name : TEXT <<UNIQUE>>
+}
+
+entity "question_tags" as question_tags {
+  * question_id : INTEGER <<FK>>
+  * tag_id : INTEGER <<FK>>
+}
+
+users ||--o{ results : "1:N"
+questions ||--o{ answers : "1:N"
+questions }o--o{ tags : "M:N"
+question_tags }o--|| questions : FK
+question_tags }o--|| tags : FK
+results }o--|| users : FK
+answers }o--|| questions : FK
+@enduml
