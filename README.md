@@ -73,3 +73,5 @@
 **Use-Case диаграмма, построенная с помощью PlantUML:**
 <img width="645" height="467" alt="image" src="https://github.com/user-attachments/assets/dee4f179-cf19-4252-926f-d1cea2197d57" />
 
+**Er диаграмма связей таблиц:**
+![alt text](image.png)
