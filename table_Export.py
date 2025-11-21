@@ -147,7 +147,7 @@ def main():
     2. Выгрузить данные из таблицы questions + связанные answers
     3. Сохранить их в JSON, CSV, XML, YAML
     """
-
+    
     os.makedirs(OUT_DIR, exist_ok=True)
 
     data = fetch_table_with_related(
