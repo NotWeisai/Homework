@@ -74,4 +74,6 @@
 <img width="645" height="467" alt="image" src="https://github.com/user-attachments/assets/dee4f179-cf19-4252-926f-d1cea2197d57" />
 
 **Er диаграмма связей таблиц:**
+
 <img width="619" height="457" alt="ER-diagram" src="https://github.com/user-attachments/assets/9e2f70b7-6fcc-4036-8900-1c4e369c9908" />
+
