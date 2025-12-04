@@ -1,6 +1,6 @@
 from typing import List, Dict, Any
 import random
-from University.models import get_conn
+from models import get_conn
 
 def get_user_results(username: str) -> List[Dict[str, Any]]:
     """Все результаты конкретного пользователя (по имени)."""

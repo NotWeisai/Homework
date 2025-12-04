@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import sys
-from University.models import User, Question, Answer, Result
-from University.repository import get_random_questions, get_user_results, get_all_users, get_all_questions, get_question_with_answers
-import random  # Уже в repo, но ок
+from models import User, Question, Answer, Result, get_conn
+from repository import get_random_questions, get_user_results, get_all_users, get_all_questions, get_question_with_answers
+import random
+from table_export import export_table  # Для экспорта
 
 def login():
     """Простой логин по username (пароль не добавлен для простоты; можно доработать)."""
@@ -37,6 +38,29 @@ def user_menu(user):
         else:
             print("Неверный выбор.")
 
+def export_selected_table():
+    """Админ выбирает таблицу для экспорта."""
+    tables = {
+        '1': ('users', {"results": ("results", "user_id")}),  # С результатами
+        '2': ('questions', {"answers": ("answers", "question_id")}),  # С ответами
+        '3': ('answers', None),  # Чисто ответы
+        '4': ('results', {"user": ("users", "id")}),  # С именами юзеров
+        '5': ('tags', None),  # Теги
+        '6': ('question_tags', {"questions": ("questions", "question_id"), "tags": ("tags", "tag_id")})  # Связи с вопросами/тегами
+    }
+    print("\n=== Выбери таблицу для экспорта ===")
+    for key, (name, rel) in tables.items():
+        print(f"{key}. {name}")
+    print("0. Назад")
+    choice = input("Выбор: ").strip()
+    if choice == '0':
+        return
+    if choice in tables:
+        table_name, related = tables[choice]
+        export_table(table_name, related)
+    else:
+        print("Неверный выбор. Попробуй снова.")
+
 def admin_menu(user):
     """Меню для администратора."""
     while True:
@@ -45,8 +69,8 @@ def admin_menu(user):
         print("2. Просмотреть/обновить/удалить вопросы")
         print("3. Добавить пользователя")
         print("4. Просмотреть/удалить пользователей")
-        print("5. Экспорт данных (table_export.py)")
-        print("6. Выход")
+        print("5. Экспорт выбранной таблицы")  # НОВОЕ!
+        print("6. Выход")  # Сдвинь
         choice = input("Выбор: ").strip()
         if choice == '1':
             add_question()
@@ -57,8 +81,7 @@ def admin_menu(user):
         elif choice == '4':
             manage_users()
         elif choice == '5':
-            import os
-            os.system("python table_export.py")
+            export_selected_table()  # НОВОЕ!
         elif choice == '6':
             break
         else:
@@ -140,12 +163,20 @@ def manage_questions():
         return
     if input("Удалить? (y/n): ").lower() == 'y':
         Question.delete(qid)
-        print("Удалено.")
+        reset_autoincrement()  # Добавь эту строку
+        print("Удалено и счётчик сброшен.")
     else:
         text = input("Новый текст (Enter - оставить): ").strip() or None
         category = input("Новая категория (Enter - оставить): ").strip() or None
         Question.update(qid, text, category)
         print("Обновлено.")
+
+def reset_autoincrement(table: str = 'questions'):
+    """Сброс autoincrement после удаления — следующий ID = MAX+1."""
+    with get_conn() as conn:
+        conn.execute(f"UPDATE sqlite_sequence SET seq = COALESCE((SELECT MAX(id) FROM {table}), 0) WHERE name = '{table}';")
+        conn.commit()
+        print(f"Счётчик {table} сброшен на {conn.execute('SELECT seq FROM sqlite_sequence WHERE name=?', (table,)).fetchone()[0] + 1}.")
 
 def add_user():
     """Добавление пользователя."""

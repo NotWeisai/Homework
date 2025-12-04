@@ -54,21 +54,6 @@ class Question:
     category: Optional[str] = None
     created_at: Optional[str] = None
 
-@staticmethod
-def get_tags(qid: int) -> List[str]:
-    with get_conn() as conn:
-        rows = conn.execute("""
-            SELECT t.name FROM tags t 
-            JOIN question_tags qt ON qt.tag_id = t.id 
-            WHERE qt.question_id = ?
-        """, (qid,)).fetchall()
-        return [r['name'] for r in rows]
-
-@staticmethod
-def attach_tags(qid: int, tag_names: List[str]) -> None:
-    for name in tag_names:
-        Tag.attach_to_question(qid, name)
-
     @staticmethod
     def create(text: str, category: Optional[str] = None) -> "Question":
         with get_conn() as conn:
@@ -89,21 +74,36 @@ def attach_tags(qid: int, tag_names: List[str]) -> None:
     @staticmethod
     def update(qid: int, text: Optional[str] = None, category: Optional[str] = None) -> None:
         with get_conn() as conn:
-            if text is not None and category is not None:
-                conn.execute("UPDATE questions SET text=?, category=? WHERE id=?", (text, category, qid))
-            elif text is not None:
-                conn.execute("UPDATE questions SET text=? WHERE id=?", (text, qid))
-            elif category is not None:
-                conn.execute("UPDATE questions SET category=? WHERE id=?", (category, qid))
-            else:
-                return  # Ничего не обновляем
-            conn.commit()
+            if text is not None or category is not None:
+                if text is not None and category is not None:
+                    conn.execute("UPDATE questions SET text=?, category=? WHERE id=?", (text, category, qid))
+                elif text is not None:
+                    conn.execute("UPDATE questions SET text=? WHERE id=?", (text, qid))
+                else:
+                    conn.execute("UPDATE questions SET category=? WHERE id=?", (category, qid))
+                conn.commit()
 
     @staticmethod
     def delete(qid: int) -> None:
         with get_conn() as conn:
             conn.execute("DELETE FROM questions WHERE id=?", (qid,))
             conn.commit()
+
+    @staticmethod
+    def get_tags(qid: int) -> List[str]:
+        with get_conn() as conn:
+            rows = conn.execute("""
+                SELECT t.name FROM tags t 
+                JOIN question_tags qt ON qt.tag_id = t.id 
+                WHERE qt.question_id = ?
+            """, (qid,)).fetchall()
+            return [r['name'] for r in rows]
+
+    @staticmethod
+    def attach_tags(qid: int, tag_names: List[str]) -> None:
+        for name in tag_names:
+            Tag.attach_to_question(qid, name)
+
 
 @dataclass
 class Answer:

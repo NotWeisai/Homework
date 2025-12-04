@@ -2,7 +2,7 @@ import os
 import json
 import csv
 import xml.etree.ElementTree as ET
-import yaml  # pip install pyyaml if needed
+import yaml
 import sqlite3
 
 DB_PATH = "quiz.db"
@@ -15,16 +15,28 @@ def get_conn():
     return conn
 
 def fetch_table_with_related(table: str, related: dict = None):
-    """Извлечение таблицы + связанных."""
     if related is None:
         related = {}
     with get_conn() as conn:
-        main_rows = conn.execute(f"SELECT * FROM {table} ORDER BY id").fetchall()
+        try:
+            main_rows = conn.execute(f"SELECT * FROM {table} ORDER BY rowid ASC").fetchall()
+        except sqlite3.OperationalError:
+            print(f"Таблица {table} не существует.")
+            return []
         result = []
         for row in main_rows:
             row_dict = dict(row)
-            for field, (rel_table, rel_key) in related.items():
-                rel_rows = conn.execute(f"SELECT * FROM {rel_table} WHERE {rel_key}=?", (row["id"],)).fetchall()
+            for field, rel_info in related.items():
+                if isinstance(rel_info, tuple) and len(rel_info) >= 2:
+                    rel_table, rel_col = rel_info[0], rel_info[1]
+                    main_col = rel_info[2] if len(rel_info) > 2 else "id"
+                else:
+                    continue  # Invalid
+                if main_col not in row:
+                    row_dict[field] = []
+                    continue
+                value = row[main_col]
+                rel_rows = conn.execute(f"SELECT * FROM {rel_table} WHERE {rel_col}=?", (value,)).fetchall()
                 row_dict[field] = [dict(r) for r in rel_rows]
             result.append(row_dict)
         return result
@@ -36,14 +48,12 @@ def export_json(data, path):
 def export_csv(data, path):
     if not data:
         return
-    flat = []
-    for row in data:
-        clean = {k: json.dumps(v, ensure_ascii=False) if isinstance(v, list) else v for k, v in row.items()}
-        flat.append(clean)
-    with open(path, "w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=flat[0].keys())
-        writer.writeheader()
-        writer.writerows(flat)
+    flat = [{k: json.dumps(v, ensure_ascii=False) if isinstance(v, list) else v for k, v in row.items()} for row in data]
+    if flat:
+        with open(path, "w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=flat[0].keys())
+            writer.writeheader()
+            writer.writerows(flat)
 
 def export_xml(data, path):
     root = ET.Element("items")
@@ -53,38 +63,29 @@ def export_xml(data, path):
             if isinstance(val, list):
                 parent = ET.SubElement(item, key)
                 for block in val:
-                    sub_el = ET.SubElement(parent, "entry")
+                    sub = ET.SubElement(parent, "entry")
                     for k, v in block.items():
-                        sub_c = ET.SubElement(sub_el, k)
-                        sub_c.text = str(v)
+                        child = ET.SubElement(sub, k)
+                        child.text = str(v)
             else:
                 child = ET.SubElement(item, key)
                 child.text = str(val)
-    tree = ET.ElementTree(root)
-    tree.write(path, encoding="utf-8", xml_declaration=True)
+    ET.ElementTree(root).write(path, encoding="utf-8", xml_declaration=True)
 
 def export_yaml(data, path):
     with open(path, "w", encoding="utf-8") as f:
         yaml.dump(data, f, allow_unicode=True, default_flow_style=False, indent=2)
 
-def main():
+def export_table(table: str, related: dict = None):
+    data = fetch_table_with_related(table, related)
+    if not data:
+        print(f"Таблица {table} пуста.")
+        return
     os.makedirs(OUT_DIR, exist_ok=True)
-    
-    # Экспорт users + results
-    users_data = fetch_table_with_related("users", {"results": ("results", "user_id")})
-    export_json(users_data, os.path.join(OUT_DIR, "users.json"))
-    export_csv(users_data, os.path.join(OUT_DIR, "users.csv"))
-    export_xml(users_data, os.path.join(OUT_DIR, "users.xml"))
-    export_yaml(users_data, os.path.join(OUT_DIR, "users.yaml"))
-    
-    # Экспорт questions + answers
-    questions_data = fetch_table_with_related("questions", {"answers": ("answers", "question_id")})
-    export_json(questions_data, os.path.join(OUT_DIR, "questions.json"))
-    export_csv(questions_data, os.path.join(OUT_DIR, "questions.csv"))
-    export_xml(questions_data, os.path.join(OUT_DIR, "questions.xml"))
-    export_yaml(questions_data, os.path.join(OUT_DIR, "questions.yaml"))
-    
-    print("Готово! Файлы созданы в папке out.")
+    base = table
+    export_json(data, os.path.join(OUT_DIR, f"{base}.json"))
+    export_csv(data, os.path.join(OUT_DIR, f"{base}.csv"))
+    export_xml(data, os.path.join(OUT_DIR, f"{base}.xml"))
+    export_yaml(data, os.path.join(OUT_DIR, f"{base}.yaml"))
+    print(f"Экспорт {table} ({len(data)} записей) в out/.")
 
-if __name__ == "__main__":
-    main()
